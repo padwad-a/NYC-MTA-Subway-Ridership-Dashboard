@@ -46,12 +46,24 @@ def filter_data(df, start_date=None, end_date=None):
     return filtered_df
 
 
-def get_hourly_ridership(df):
+def get_hourly_ridership(df: pd.DataFrame) -> pd.DataFrame:
+    """Get hourly ridership data."""
     hourly_ridership_df = df.copy()
     hourly_ridership_df = (
-        hourly_ridership_df.groupby("transit_timestamp")["ridership"]
+        hourly_ridership_df.groupby(["transit_timestamp", "borough"])["ridership"]
         .sum()
+        .unstack(fill_value=0)
         .reset_index()
-        .rename(columns={"ridership": "hourly_ridership"})
     )
+    hourly_ridership_df["total_ridership"] = hourly_ridership_df.iloc[:, 1:].sum(axis=1)
+    hourly_ridership_df.columns.name = None  # Remove the MultiIndex column name
     return hourly_ridership_df
+
+
+def get_stations(df: pd.DataFrame) -> pd.DataFrame:
+    """Get all stations in the dataset."""
+
+    stations = df[["station_complex", "latitude", "longitude"]].drop_duplicates(
+        subset=["station_complex"]
+    )
+    return stations
