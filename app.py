@@ -1,12 +1,9 @@
-import dash
-import dash_bootstrap_components as dbc
-from layout import layout
+from app_instance import app
+from layout import get_layout
+
+app.layout = get_layout()
 import callbacks
 
-app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
-app.title = "MTA Subway Ridership Dashboard"
-app.layout = layout
 
 if __name__ == "__main__":
-
-    app.run(debug=True)
+    app.run(debug=True, use_reloader=False)

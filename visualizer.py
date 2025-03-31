@@ -8,5 +8,6 @@ def plot_hourly_ridership(hourly_ridership_df):
         x="transit_timestamp",
         y="hourly_ridership",
         title="Ridership Over Time",
+        labels={"transit_timestamp": "Time", "hourly_ridership": "No of Riders"},
     )
     return fig
