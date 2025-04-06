@@ -1,15 +1,25 @@
+import time
 from dash import html, dcc
 import dash_bootstrap_components as dbc
 from data import get_data
-from visualizer import plot_hourly_ridership, plot_station_map_view
+from visualizer import (
+    plot_hourly_ridership,
+    plot_station_map_view,
+    plot_weekly_ridership,
+    plot_time_block_ridership,
+)
 from buttons import date_picker_start, date_picker_end, load_button
 
 ### Data ###
-hourly_ridership_df, stations_df = get_data()
+hourly_ridership_df, stations_df, weekly_ridership_df, time_block_ridership_df = (
+    get_data()
+)
 
 
 ### Plots ###
 hourly_ridership_plot = plot_hourly_ridership(hourly_ridership_df)
+weekly_ridership_plot = plot_weekly_ridership(weekly_ridership_df)
+time_block_ridership_plot = plot_time_block_ridership(time_block_ridership_df)
 station_map_view = plot_station_map_view(stations_df)
 
 
@@ -20,10 +30,7 @@ def get_layout():
     tab1_content = (
         html.Div(
             [
-                html.H4("Ridership Trends Over Time", className="text-center mt-4"),
-                html.P(
-                    "Explore how ridership changes over time", className="text-center"
-                ),
+                html.H4("Ridership Trends", className="text-center mt-4"),
                 dbc.Row(
                     [
                         dbc.Col(
@@ -51,6 +58,16 @@ def get_layout():
                 dcc.Graph(
                     id="ridership-trend-graph",
                     figure=hourly_ridership_plot,
+                    className="mx-auto",
+                ),
+                dcc.Graph(
+                    id="ridership-weekly-graph",
+                    figure=weekly_ridership_plot,
+                    className="mx-auto",
+                ),
+                dcc.Graph(
+                    id="ridership-time-block-graph",
+                    figure=time_block_ridership_plot,
                     className="mx-auto",
                 ),
             ],
@@ -100,7 +117,7 @@ def get_layout():
                         children=tab1_content,
                     ),
                     dcc.Tab(
-                        label="🕒 Peak Hours Heatmap",
+                        label="🕒 Performance Dashboard",
                         value="tab-2",
                         children=tab2_content,
                     ),

@@ -125,12 +125,78 @@ def get_stations(ridership_data: pd.DataFrame) -> pd.DataFrame:
     return stations
 
 
+def get_weekly_ridership(df: pd.DataFrame) -> pd.DataFrame:
+    """Get weekly ridership data grouped by day and borough."""
+    df = df.copy()
+    df["day"] = df["transit_timestamp"].dt.day_name()
+    weekly_ridership_df = (
+        df.groupby(["day", "borough"])["ridership"].sum().reset_index()
+    )
+    weekly_ridership_df.rename(columns={"ridership": "total_ridership"}, inplace=True)
+
+    # Ensure all days of the week are present for each borough
+    all_days = [
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday",
+        "Saturday",
+        "Sunday",
+    ]
+    all_boroughs = df["borough"].unique()
+    multi_index = pd.MultiIndex.from_product(
+        [all_days, all_boroughs], names=["day", "borough"]
+    )
+    weekly_ridership_df = (
+        weekly_ridership_df.set_index(["day", "borough"])
+        .reindex(multi_index, fill_value=0)
+        .reset_index()
+    )
+
+    return weekly_ridership_df
+
+
+def get_time_block_ridership(df: pd.DataFrame) -> pd.DataFrame:
+    """Get ridership data grouped by 3-hour time blocks and borough."""
+    df = df.copy()
+    df["time_block"] = (df["transit_timestamp"].dt.hour // 3) * 3
+    df["time_block"] = df["time_block"].apply(lambda x: f"{x:02d}:00-{x+3:02d}:00")
+    time_block_ridership_df = (
+        df.groupby(["time_block", "borough"])["ridership"].sum().reset_index()
+    )
+    time_block_ridership_df.rename(
+        columns={"ridership": "total_ridership"}, inplace=True
+    )
+
+    # Ensure all time blocks are present for each borough
+    all_time_blocks = [f"{hour:02d}:00-{hour+3:02d}:00" for hour in range(0, 24, 3)]
+    all_boroughs = df["borough"].unique()
+    multi_index = pd.MultiIndex.from_product(
+        [all_time_blocks, all_boroughs], names=["time_block", "borough"]
+    )
+    time_block_ridership_df = (
+        time_block_ridership_df.set_index(["time_block", "borough"])
+        .reindex(multi_index, fill_value=0)
+        .reset_index()
+    )
+
+    return time_block_ridership_df
+
+
 def get_data():
     """Load and clean data."""
     ridership_data = load_data()
     ridership_df = clean_data(ridership_data)
     filetered_df = filter_data(ridership_df)
     hourly_ridership_df = get_hourly_ridership(filetered_df)
+    weekly_ridership_df = get_weekly_ridership(ridership_df)
+    time_block_ridership_df = get_time_block_ridership(filetered_df)
     stations_df = get_stations(ridership_df)
 
-    return hourly_ridership_df, stations_df
+    return (
+        hourly_ridership_df,
+        stations_df,
+        weekly_ridership_df,
+        time_block_ridership_df,
+    )
