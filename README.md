@@ -52,3 +52,9 @@ Fields in the dataset:
 - borough: The borough the station belongs to
 - ridership: Number of passengers at that hour
 - latitude, longitude: For mapping station location
+
+## References
+
+- [MTA Subway Hourly Ridership Dataset (2020–2024)](https://data.ny.gov/Transportation/MTA-Subway-Hourly-Ridership-2020-2024/wujg-7c2s/about_data)
+- [MTA Subway Stations](https://data.ny.gov/Transportation/MTA-Subway-Stations/39hk-dx4f/about_data)
+- [New York City Subway nomenclature](https://en.wikipedia.org/wiki/New_York_City_Subway_nomenclature)

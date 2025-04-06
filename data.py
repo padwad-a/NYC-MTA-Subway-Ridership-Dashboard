@@ -1,16 +1,53 @@
-from venv import logger
+import stat
 import requests
 import pandas as pd
-from sympy import N
+import logging
+from helper import extract_lines
+
+logger = logging.getLogger("MTA_Subway_Ridership_Dashboard")
+
+# Define line colors based on MTA standards
+LINE_COLOR_MAP = {
+    "1": "#EE352E",
+    "2": "#EE352E",
+    "3": "#EE352E",
+    "4": "#00933C",
+    "5": "#00933C",
+    "6": "#00933C",
+    "7": "#B933AD",
+    "A": "#2850AD",
+    "C": "#2850AD",
+    "E": "#2850AD",
+    "B": "#FF6319",
+    "D": "#FF6319",
+    "F": "#FF6319",
+    "M": "#FF6319",
+    "G": "#6CBE45",
+    "J": "#996633",
+    "Z": "#996633",
+    "L": "#A7A9AC",
+    "N": "#FCCC0A",
+    "Q": "#FCCC0A",
+    "R": "#FCCC0A",
+    "W": "#FCCC0A",
+    "S": "#808183",
+}
 
 
 def load_data():
-    # url = "https://data.ny.gov/resource/wujg-7c2s.json?$limit=50000"
-    # response = requests.get(url)
-    # data = response.json()
-    # df = pd.DataFrame(data)
-    df = pd.read_csv("data.csv")
-    return df
+    def get_data_from_api(url):
+        response = requests.get(url)
+        if response.status_code == 200:
+            return pd.DataFrame(response.json())
+        else:
+            logger.error(f"Failed to fetch data from {url}")
+        return pd.DataFrame()
+
+    # ridership_url = "https://data.ny.gov/resource/wujg-7c2s.json?$limit=50000"
+    # ridership_df = get_data_from_api(ridership_url)
+
+    ridership_df = pd.read_csv("data.csv")
+    return ridership_df
 
 
 def clean_data(df):
@@ -60,10 +97,40 @@ def get_hourly_ridership(df: pd.DataFrame) -> pd.DataFrame:
     return hourly_ridership_df
 
 
-def get_stations(df: pd.DataFrame) -> pd.DataFrame:
+def get_stations(ridership_data: pd.DataFrame) -> pd.DataFrame:
     """Get all stations in the dataset."""
 
-    stations = df[["station_complex", "latitude", "longitude"]].drop_duplicates(
-        subset=["station_complex"]
+    # Getting all unique station complexes from the ridership data
+    stations_info = ridership_data[
+        ["station_complex_id", "station_complex", "latitude", "longitude", "borough"]
+    ].drop_duplicates(subset=["station_complex"])
+
+    # Summing and adding ridership data to the stations info
+    ridership = (
+        ridership_data.groupby("station_complex")["ridership"].sum().reset_index()
     )
+    stations = pd.merge(stations_info, ridership, on="station_complex", how="left")
+    stations["lines"] = stations["station_complex"].apply(extract_lines)
+    stations["line"] = stations["lines"].apply(lambda x: x[0])
+    stations.loc[stations["station_complex_id"].str.contains("TRAM"), "line"] = "TRAM"
+    stations["line_color"] = stations["line"].apply(
+        lambda x: (
+            LINE_COLOR_MAP[x[0]]
+            if len(x) == 1 and x[0] in LINE_COLOR_MAP
+            else "#000000"
+        )
+    )
+
+    stations["station_size"] = 7
     return stations
+
+
+def get_data():
+    """Load and clean data."""
+    ridership_data = load_data()
+    ridership_df = clean_data(ridership_data)
+    filetered_df = filter_data(ridership_df)
+    hourly_ridership_df = get_hourly_ridership(filetered_df)
+    stations_df = get_stations(ridership_df)
+
+    return hourly_ridership_df, stations_df

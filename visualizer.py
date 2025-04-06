@@ -1,4 +1,3 @@
-import folium
 import plotly.express as px
 
 
@@ -40,12 +39,35 @@ def plot_station_map_view(stations_df):
         lat="latitude",
         lon="longitude",
         hover_name="station_complex",
+        hover_data={
+            "borough": True,
+            "ridership": True,
+            "latitude": False,
+            "longitude": False,
+            "station_size": False,
+            "line_color": False,
+        },
+        labels={"borough": "Borough", "ridership": "Total ridership"},
         zoom=11,
         height=600,
+        size="station_size",
+        size_max=7,
+        color="line_color",
+    )
+
+    # Update legend values to use the "line" column
+    station_map.for_each_trace(
+        lambda t: (
+            t.update(
+                name=stations_df.loc[stations_df["line_color"] == t.name, "line"].iloc[0]
+            )
+            if not stations_df.loc[stations_df["line_color"] == t.name, "line"].empty
+            else t.update(name=t.name.replace("_", " ").title())
+        )
     )
 
     station_map.update_layout(
-        mapbox_style="open-street-map",
+        mapbox_style="carto-positron",
         margin={"r": 0, "t": 40, "l": 0, "b": 0},
     )
 

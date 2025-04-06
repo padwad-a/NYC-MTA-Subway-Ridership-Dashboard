@@ -1,20 +1,16 @@
 from dash import html, dcc
 import dash_bootstrap_components as dbc
-from data import load_data, clean_data, filter_data, get_hourly_ridership, get_stations
+from data import get_data
 from visualizer import plot_hourly_ridership, plot_station_map_view
 from buttons import date_picker_start, date_picker_end, load_button
 
 ### Data ###
-data = load_data()
-df = clean_data(data)
-filetered_df = filter_data(df)
-hourly_ridership_df = get_hourly_ridership(filetered_df)
-stations = get_stations(df)
+hourly_ridership_df, stations_df = get_data()
 
 
 ### Plots ###
 hourly_ridership_plot = plot_hourly_ridership(hourly_ridership_df)
-station_map_view = plot_station_map_view(df)
+station_map_view = plot_station_map_view(stations_df)
 
 
 def get_layout():
