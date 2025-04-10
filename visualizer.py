@@ -1,5 +1,6 @@
 import plotly.express as px
 import logging
+from helper import create_buttons, add_bars_to_figure
 
 logger = logging.getLogger("MTA_Subway_Ridership_Dashboard")
 
@@ -12,7 +13,6 @@ def plot_hourly_ridership(hourly_ridership_df):
         hourly_ridership_df,
         x="transit_timestamp",
         y=columns_to_plot,
-        title="Ridership Over a Day",
         labels={
             "transit_timestamp": "Time",
             "value": "No of riders",
@@ -29,8 +29,9 @@ def plot_hourly_ridership(hourly_ridership_df):
     return fig
 
 
-def plot_weekly_ridership(weekly_ridership_df):
-    boroughs = weekly_ridership_df["borough"].unique()
+def plot_weekly_ridership(weekly_ridership_df, key):
+    label = "All Boroughs" if key == "borough" else "All Stations"
+    unique_keys = weekly_ridership_df[key].unique()
     total_data = (
         weekly_ridership_df.groupby("day")["total_ridership"].sum().reset_index()
     )
@@ -39,7 +40,6 @@ def plot_weekly_ridership(weekly_ridership_df):
         total_data,
         x="day",
         y="total_ridership",
-        title="Ridership Distribution by Day",
         labels={
             "day": "Day of the Week",
             "total_ridership": "Number of Riders",
@@ -57,36 +57,10 @@ def plot_weekly_ridership(weekly_ridership_df):
         },
     )
 
-    buttons = [
-        {
-            "label": "All Boroughs",
-            "method": "update",
-            "args": [{"visible": [True] + [False] * len(boroughs)}],
-        }
-    ]
-
-    for i, borough in enumerate(boroughs):
-        borough_data = weekly_ridership_df[weekly_ridership_df["borough"] == borough]
-        fig.add_bar(
-            x=borough_data["day"],
-            y=borough_data["total_ridership"],
-            name=borough,
-            visible=False,
-        )
-        buttons.append(
-            {
-                "label": borough,
-                "method": "update",
-                "args": [
-                    {
-                        "visible": [False]
-                        + [False] * (i)
-                        + [True]
-                        + [False] * (len(boroughs) - i - 1)
-                    }
-                ],
-            }
-        )
+    buttons = create_buttons(unique_keys, label)
+    add_bars_to_figure(
+        fig, unique_keys, weekly_ridership_df, key, "day", "total_ridership"
+    )
 
     fig.update_layout(
         updatemenus=[
@@ -103,8 +77,9 @@ def plot_weekly_ridership(weekly_ridership_df):
     return fig
 
 
-def plot_time_block_ridership(time_block_ridership_df):
-    boroughs = time_block_ridership_df["borough"].unique()
+def plot_time_block_ridership(time_block_ridership_df, key):
+    label = "All Boroughs" if key == "borough" else "All Stations"
+    unique_keys = time_block_ridership_df[key].unique()
     total_data = (
         time_block_ridership_df.groupby("time_block")["total_ridership"]
         .sum()
@@ -115,7 +90,6 @@ def plot_time_block_ridership(time_block_ridership_df):
         total_data,
         x="time_block",
         y="total_ridership",
-        title="Ridership Distribution by Time Block",
         labels={
             "time_block": "Time Block",
             "total_ridership": "Number of Riders",
@@ -127,38 +101,10 @@ def plot_time_block_ridership(time_block_ridership_df):
         },
     )
 
-    buttons = [
-        {
-            "label": "All Boroughs",
-            "method": "update",
-            "args": [{"visible": [True] + [False] * len(boroughs)}],
-        }
-    ]
-
-    for i, borough in enumerate(boroughs):
-        borough_data = time_block_ridership_df[
-            time_block_ridership_df["borough"] == borough
-        ]
-        fig.add_bar(
-            x=borough_data["time_block"],
-            y=borough_data["total_ridership"],
-            name=borough,
-            visible=False,
-        )
-        buttons.append(
-            {
-                "label": borough,
-                "method": "update",
-                "args": [
-                    {
-                        "visible": [False]
-                        + [False] * i
-                        + [True]
-                        + [False] * (len(boroughs) - i - 1)
-                    }
-                ],
-            }
-        )
+    buttons = create_buttons(unique_keys, label)
+    add_bars_to_figure(
+        fig, unique_keys, time_block_ridership_df, key, "time_block", "total_ridership"
+    )
 
     fig.update_layout(
         updatemenus=[

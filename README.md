@@ -32,14 +32,6 @@ The project is modular, scalable, and designed with clean separation of concerns
 
 ---
 
-## 📦 Dependencies
-
-Install the following Python libraries before running the project:
-
-```bash
-pip install dash dash-bootstrap-components pandas plotly requests
-```
-
 ## 📊 About the Data
 
 The dataset by the Metropolitan Transportation Authority provides subway ridership estimates on an hourly basis by subway station complex and class of fare payment.
