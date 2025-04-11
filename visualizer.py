@@ -1,6 +1,7 @@
 import plotly.express as px
 import logging
 from helper import create_buttons, add_bars_to_figure
+import json
 
 logger = logging.getLogger("MTA_Subway_Ridership_Dashboard")
 
@@ -122,6 +123,8 @@ def plot_time_block_ridership(time_block_ridership_df, key):
 
 
 def plot_station_map_view(stations_df):
+    with open("data/borough_boundaries.geojson", "r") as f:
+        borough_boundaries = json.load(f)
     # Ensure required columns exist
     required_cols = {"latitude", "longitude", "station_complex"}
     if not required_cols.issubset(stations_df.columns):
@@ -150,6 +153,17 @@ def plot_station_map_view(stations_df):
         color="line_color",
     )
 
+    station_map.update_layout(
+        mapbox_layers=[
+            {
+                "source": borough_boundaries,
+                "type": "line",
+                "color": "gray",
+                "line": {"width": 1},
+            }
+        ],
+    )
+
     # Update legend values to use the "line" column
     station_map.for_each_trace(
         lambda t: (
@@ -166,6 +180,7 @@ def plot_station_map_view(stations_df):
     station_map.update_layout(
         mapbox_style="carto-positron",
         margin={"r": 0, "t": 40, "l": 0, "b": 0},
+        legend_title={"text": "Lines"},
     )
 
     # Add click event handling
@@ -173,15 +188,5 @@ def plot_station_map_view(stations_df):
         marker=dict(opacity=0.7), selector=dict(type="scattermapbox")
     )
     station_map.update_layout(clickmode="event+select")
-
-    # Store click state in a variable
-    click_state = False
-
-    def handle_click(trace, points, state):
-        nonlocal click_state
-        click_state = len(points.point_inds) > 0
-        print(f"Clicked point: {points.point_inds}")
-
-    station_map.data[0].on_click(handle_click)
 
     return station_map

@@ -123,6 +123,8 @@ def get_layout():
                 figure=station_map_view,
                 config={"scrollZoom": True},
             ),
+            html.Hr(className="my-4"),
+            html.Div(id="station-details-table"),
         ],
         style={"fontFamily": "Lato"},
     )
@@ -144,12 +146,30 @@ def get_layout():
                 [
                     dbc.Col(
                         add_card(
-                            card_header="Total Unique Stations",
+                            card_header="Total Number of Boroughs",
+                            card_body=metrics["no_of_boroughs"],
+                            card_color=card_color,
+                            card_style=card_style,
+                        ),
+                        width=3,
+                    ),
+                    dbc.Col(
+                        add_card(
+                            card_header="Total Number of Lines",
+                            card_body=metrics["no_of_lines"],
+                            card_color=card_color,
+                            card_style=card_style,
+                        ),
+                        width=3,
+                    ),
+                    dbc.Col(
+                        add_card(
+                            card_header="Total Number of Stations",
                             card_body=metrics["no_of_stations"],
                             card_color=card_color,
                             card_style=card_style,
                         ),
-                        md=4,
+                        width=3,
                     ),
                     dbc.Col(
                         add_card(
@@ -158,7 +178,7 @@ def get_layout():
                             card_color=card_color,
                             card_style=card_style,
                         ),
-                        md=4,
+                        width=3,
                     ),
                 ],
                 justify="center",

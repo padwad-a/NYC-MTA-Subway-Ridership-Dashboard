@@ -6,14 +6,35 @@ from data import (
     filter_data,
     get_hourly_ridership,
     get_default_dates,
+    get_stations_stats_df,
 )
 from visualizer import plot_hourly_ridership
+from helper import add_dash_table
 import logging
 
 logger = logging.getLogger("MTA_Subway_Ridership_Dashboard")
 
 data = load_data()
 data = clean_data(data)
+
+
+@app.callback(
+    Output("station-details-table", "children"),
+    Input("station-map-view", "clickData"),
+)
+def display_station_details(clickData):
+    logger.debug(clickData)
+    if clickData is None:
+        return None
+
+    station_name = clickData["points"][0]["hovertext"]
+
+    ridership_df = clean_data(load_data())
+    station_stats_df = get_stations_stats_df(ridership_df)
+    station_data = station_stats_df[station_stats_df["Station"] == station_name]
+    station_dash_table = add_dash_table(station_data, "station-table")
+
+    return station_dash_table
 
 
 @app.callback(

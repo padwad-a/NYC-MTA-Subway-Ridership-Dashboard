@@ -20,6 +20,7 @@ def load_data():
     try:
         logger.info("Reading Data file.")
         ridership_df = pd.read_csv(f"{DATA_DIR}data.csv")
+
     except FileNotFoundError:
         logger.info("Data file not found, fetching from API.")
         ridership_url = "https://data.ny.gov/resource/wujg-7c2s.json?$limit=50000"
@@ -44,7 +45,6 @@ def clean_data(df):
     df["time_block"] = (df["transit_timestamp"].dt.hour // 3) * 3
     df["time_block"] = df["time_block"].apply(lambda x: f"{x:02d}:00-{x+3:02d}:00")
     df["line"] = df["lines"].apply(lambda x: x[0])
-    df.loc[df["station_complex_id"].str.contains("TRAM"), "line"] = "TRAM"
     df["line_color"] = df["line"].apply(
         lambda x: (
             LINE_COLOR_MAP[x[0]]
@@ -53,6 +53,7 @@ def clean_data(df):
         )
     )
     df["station_size"] = 7
+    df = df[~df["station_complex"].isin(["Central Park North", "RI Tramway"])]
     return df
 
 
@@ -177,14 +178,24 @@ def get_stations_stats_df(df: pd.DataFrame) -> pd.DataFrame:
         .reset_index()
     )
     station_stats_df = station_stats_df.merge(
-        df[["station_complex", "line"]], on="station_complex", how="left"
+        df[["station_complex", "lines"]], on="station_complex", how="left"
     ).drop_duplicates(subset=["station_complex"])
+    station_stats_df["lines"] = station_stats_df["lines"].apply(lambda x: ", ".join(x))
+    station_stats_df.rename(columns={"lines": "line"}, inplace=True)
 
     # Peak hour per station
     peak_hours = get_busiest(df, ["station_complex", "hour"], "peak_hour")
 
     # Busiest day of week per station
     busiest_days = get_busiest(df, ["station_complex", "day"], "busiest_day")
+
+    avg_by_day = df.groupby(["station_complex", "day"])["ridership"].sum().reset_index()
+    avg_by_day = (
+        avg_by_day.groupby("station_complex")["ridership"]
+        .mean()
+        .reset_index()
+        .rename(columns={"ridership": "avg_by_day"})
+    )
 
     # Merge all together
     station_stats_df = station_stats_df.merge(
@@ -193,8 +204,11 @@ def get_stations_stats_df(df: pd.DataFrame) -> pd.DataFrame:
     station_stats_df = station_stats_df.merge(
         busiest_days, on="station_complex", how="left"
     )
+    station_stats_df = station_stats_df.merge(
+        avg_by_day, on="station_complex", how="left"
+    )
     station_stats_df = station_stats_df.astype(
-        {"total_ridership": int, "avg_hourly_ridership": int}
+        {"total_ridership": int, "avg_hourly_ridership": int, "avg_by_day": int}
     )
 
     station_stats_df["peak_hour"] = station_stats_df["peak_hour"].apply(
@@ -211,17 +225,19 @@ def get_stations_stats_df(df: pd.DataFrame) -> pd.DataFrame:
             "avg_hourly_ridership",
             "peak_hour",
             "busiest_day",
+            "avg_by_day",
             "line",
         ]
     ]
 
     station_stats_df = station_stats_df.rename(
         columns={
-            "station_complex": "Station Complex",
+            "station_complex": "Station",
             "total_ridership": "Total Ridership",
             "avg_hourly_ridership": "Avg Hourly Ridership",
             "peak_hour": "Peak Hour",
             "busiest_day": "Busiest Day",
+            "avg_by_day": "Avg Ridership by Day",
             "line": "Line",
         }
     )
@@ -252,28 +268,54 @@ def get_borough_stats_df(df):
         df, ["borough", "station_complex"], "busiest_station"
     )
 
+    # Average ridership by day
+    avg_by_day = df.groupby(["borough", "day"])["ridership"].sum().reset_index()
+    avg_by_day = (
+        avg_by_day.groupby("borough")["ridership"]
+        .mean()
+        .reset_index()
+        .rename(columns={"ridership": "avg_by_day"})
+    )
+
+    station_count = (
+        df.groupby("borough")["station_complex"]
+        .nunique()
+        .reset_index(name="No of Stations")
+    )
+    line_count = df.groupby("borough")["line"].nunique().reset_index(name="No of Lines")
+
     # Merge busiest stations
     borough_stats = borough_stats.merge(busiest_stations, on="borough", how="left")
+    borough_stats = borough_stats.merge(avg_by_day, on="borough", how="left")
+    borough_stats = borough_stats.merge(station_count, on="borough", how="left")
+    borough_stats = borough_stats.merge(line_count, on="borough", how="left")
 
     # Final clean dataframe
     borough_stats = borough_stats[
-        ["borough", "total_ridership", "avg_per_station", "busiest_station"]
+        [
+            "borough",
+            "total_ridership",
+            "avg_per_station",
+            "avg_by_day",
+            "busiest_station",
+            "No of Stations",
+            "No of Lines",
+        ]
     ]
     borough_stats["busiest_station"] = borough_stats["busiest_station"].apply(
         format_station_name
     )
     borough_stats = borough_stats.astype(
-        {"total_ridership": int, "avg_per_station": int}
+        {"total_ridership": int, "avg_per_station": int, "avg_by_day": int}
     )
-    borough_stats.sort_values(
-        by=["borough"], inplace=True, ignore_index=True
-    )
+    borough_stats.sort_values(by=["borough"], inplace=True, ignore_index=True)
 
     borough_stats.rename(
         columns={
             "borough": "Borough",
             "total_ridership": "Total Ridership",
             "avg_per_station": "Avg Ridership per Station",
+            "avg_by_day": "Avg Ridership by Day",
             "busiest_station": "Busiest Station",
         },
         inplace=True,
@@ -305,24 +347,49 @@ def get_line_stats_df(df):
     # Busiest station per line
     busiest_stations = get_busiest(df, ["Line", "station_complex"], "busiest_station")
 
+    # Average ridership by day
+    avg_by_day = df.groupby(["Line", "day"])["ridership"].sum().reset_index()
+    avg_by_day = (
+        avg_by_day.groupby("Line")["ridership"]
+        .mean()
+        .reset_index()
+        .rename(columns={"ridership": "avg_by_day"})
+    )
+
+    station_count = (
+        df.groupby("Line")["station_complex"]
+        .nunique()
+        .reset_index(name="No of Stations")
+    )
+
     # Merge busiest stations
     line_stats = line_stats.merge(busiest_stations, on="Line", how="left")
+    line_stats = line_stats.merge(avg_by_day, on="Line", how="left")
+    line_stats = line_stats.merge(station_count, on="Line", how="left")
 
     # Final clean dataframe
     line_stats = line_stats[
-        ["Line", "total_ridership", "avg_per_station", "busiest_station"]
+        [
+            "Line",
+            "total_ridership",
+            "avg_per_station",
+            "avg_by_day",
+            "busiest_station",
+            "No of Stations",
+        ]
     ]
     line_stats["busiest_station"] = line_stats["busiest_station"].apply(
         format_station_name
     )
-    line_stats = line_stats.astype({"total_ridership": int, "avg_per_station": int})
-    line_stats.sort_values(
-        by=["Line"], inplace=True, ignore_index=True
+    line_stats = line_stats.astype(
+        {"total_ridership": int, "avg_per_station": int, "avg_by_day": int}
     )
+    line_stats.sort_values(by=["Line"], inplace=True, ignore_index=True)
     line_stats.rename(
         columns={
             "total_ridership": "Total Ridership",
             "avg_per_station": "Avg Ridership per Station",
+            "avg_by_day": "Avg Ridership by Day",
             "busiest_station": "Busiest Station",
         },
         inplace=True,
@@ -350,12 +417,16 @@ def get_key_metrics(df):
     max_borough_ridership = df.groupby("borough")["ridership"].sum().max()
     no_of_stations = df["station_complex"].nunique()
     total_num_of_rides = df["ridership"].sum()
+    no_of_lines = df["line"].nunique()
+    no_of_boroughs = df["borough"].nunique()
 
     metrics = {
         "busiest_station": (busiest_station, int(max_station_ridership)),
         "busiest_line": (busiest_line, int(max_line_ridership)),
         "busiest_borough": (busiest_borough, int(max_borough_ridership)),
         "no_of_stations": no_of_stations,
+        "no_of_lines": no_of_lines,
+        "no_of_boroughs": no_of_boroughs,
         "total_num_of_rides": int(total_num_of_rides),
     }
 
