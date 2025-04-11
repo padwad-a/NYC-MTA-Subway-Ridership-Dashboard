@@ -73,7 +73,7 @@ def get_default_dates(df):
     df = df.copy()
     df = df.sort_values("transit_timestamp", ascending=False).reset_index(drop=True)
     end_date = df.iloc[0]["transit_timestamp"]
-    start_date = end_date - pd.Timedelta(days=1)
+    start_date = df.iloc[-1]["transit_timestamp"]
     return start_date, end_date
 
 
@@ -197,15 +197,14 @@ def add_dash_table(df: pd.DataFrame, id) -> dash_table.DataTable:
     return table
 
 
-def add_card(card_header, card_body, card_color, card_style, card_para=None):
+def add_card(card_header, card_body, card_color, card_style, id, card_para=None):
     """
     Create a Dash card component with a title and content.
     """
     card = dbc.Card(
         [
             dbc.CardHeader(
-                card_header,
-                style={"fontFamily": "Lato"},
+                card_header, style={"fontFamily": "Lato"}, id=f"{id}-header"
             ),
             dbc.CardBody(
                 [
@@ -213,11 +212,13 @@ def add_card(card_header, card_body, card_color, card_style, card_para=None):
                         card_body,
                         className="card-title",
                         style={"fontFamily": "Lato"},
+                        id=f"{id}-body",
                     ),
                     html.P(
                         card_para,
                         className="card-text",
                         style={"fontFamily": "Lato"},
+                        id=f"{id}-para",
                     ),
                 ]
             ),
@@ -225,6 +226,7 @@ def add_card(card_header, card_body, card_color, card_style, card_para=None):
         color=card_color,
         inverse=False,
         style=card_style,
+        id=id,
     )
 
     return card

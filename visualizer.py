@@ -190,3 +190,24 @@ def plot_station_map_view(stations_df):
     station_map.update_layout(clickmode="event+select")
 
     return station_map
+
+
+def get_all_plots(data):
+    plots = {}
+
+    plots["hourly_ridership_plot"] = plot_hourly_ridership(data["hourly_ridership_df"])
+    plots["weekly_ridership_plot"] = plot_weekly_ridership(
+        data["weekly_ridership_df"], "borough"
+    )
+    plots["station_weekly_ridership_plot"] = plot_weekly_ridership(
+        data["station_weekly_ridership_df"], "station_complex"
+    )
+    plots["time_block_ridership_plot"] = plot_time_block_ridership(
+        data["time_block_ridership_df"], "borough"
+    )
+    plots["station_time_block_ridership_plot"] = plot_time_block_ridership(
+        data["stations_time_block_ridership_df"], "station_complex"
+    )
+    plots["station_map_view"] = plot_station_map_view(data["stations_df"])
+
+    return plots

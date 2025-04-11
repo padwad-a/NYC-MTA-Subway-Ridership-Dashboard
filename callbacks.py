@@ -1,21 +1,13 @@
 from dash import Input, Output, State, no_update
-from app_instance import app
-from data import (
-    load_data,
-    clean_data,
-    filter_data,
-    get_hourly_ridership,
-    get_default_dates,
-    get_stations_stats_df,
-)
-from visualizer import plot_hourly_ridership
+from app_instance import app, data
 from helper import add_dash_table
 import logging
+from data import get_processed_data
+from visualizer import get_all_plots
 
 logger = logging.getLogger("MTA_Subway_Ridership_Dashboard")
-
-data = load_data()
-data = clean_data(data)
+stations_stats_df = data["station_stats_df"]
+default_dates = data["dates"]
 
 
 @app.callback(
@@ -29,9 +21,7 @@ def display_station_details(clickData):
 
     station_name = clickData["points"][0]["hovertext"]
 
-    ridership_df = clean_data(load_data())
-    station_stats_df = get_stations_stats_df(ridership_df)
-    station_data = station_stats_df[station_stats_df["Station"] == station_name]
+    station_data = stations_stats_df[stations_stats_df["Station"] == station_name]
     station_dash_table = add_dash_table(station_data, "station-table")
 
     return station_dash_table
@@ -44,7 +34,7 @@ def display_station_details(clickData):
 )
 def on_page_load(pathname):
     """Callback to update date pickers on page load."""
-    start_date, end_date = get_default_dates(data)
+    start_date, end_date = default_dates
     logger.debug(
         f"Page loaded with default start_date: {start_date}, end_date: {end_date}"
     )
@@ -52,7 +42,29 @@ def on_page_load(pathname):
 
 
 @app.callback(
+    # Plots
     Output("ridership-trend-graph", "figure"),
+    Output("ridership-weekly-graph", "figure"),
+    Output("station-ridership-weekly-graph", "figure"),
+    Output("ridership-time-block-graph", "figure"),
+    Output("station-ridership-time-block-graph", "figure"),
+    Output("station-map-view", "figure"),
+    # Tables
+    Output("borough-stats-table", "data"),
+    Output("line-stats-table", "data"),
+    Output("stations-stats-table", "data"),
+    # Cards - Row 1
+    Output("total-boroughs-card-body", "children"),
+    Output("total-lines-card-body", "children"),
+    Output("total-stations-card-body", "children"),
+    Output("total-rides-card-body", "children"),
+    # Cards - Row 2
+    Output("busiest-station-card-body", "children"),
+    Output("busiest-station-card-para", "children"),
+    Output("busiest-line-card-body", "children"),
+    Output("busiest-line-card-para", "children"),
+    Output("busiest-borough-card-body", "children"),
+    Output("busiest-borough-card-para", "children"),
     Input("load-button", "n_clicks"),
     State("date-picker-start", "date"),
     State("date-picker-end", "date"),
@@ -63,8 +75,36 @@ def update_graph(n_clicks, start_date, end_date):
         logger.debug(
             f"Update graph called with start_date: {start_date}, end_date: {end_date}"
         )
-        filtered_data = filter_data(data, start_date, end_date)
-        hourly_ridership_df = get_hourly_ridership(filtered_data)
-        fig = plot_hourly_ridership(hourly_ridership_df)
-        return fig
+        # Load data
+        ridership_df = data["ridership_df"]
+        new_data = get_processed_data(ridership_df, start_date, end_date)
+        new_metrics = new_data["metrics"]
+        # Generate plots
+        plots = get_all_plots(new_data)
+
+        return (
+            # Plots
+            plots["hourly_ridership_plot"],
+            plots["weekly_ridership_plot"],
+            plots["station_weekly_ridership_plot"],
+            plots["time_block_ridership_plot"],
+            plots["station_time_block_ridership_plot"],
+            plots["station_map_view"],
+            # Tables
+            new_data["borough_stats_df"].to_dict("records"),
+            new_data["line_stats_df"].to_dict("records"),
+            new_data["station_stats_df"].to_dict("records"),
+            # Cards - Row 1
+            new_metrics["no_of_boroughs"],
+            new_metrics["no_of_lines"],
+            new_metrics["no_of_stations"],
+            new_metrics["no_of_rides"],
+            # Cards - Row 2
+            new_metrics["busiest_station"][0],
+            f"Total Ridership: {new_metrics['busiest_station'][1]:,}",
+            new_metrics["busiest_line"][0],
+            f"Total Ridership: {new_metrics['busiest_line'][1]:,}",
+            new_metrics["busiest_borough"][0],
+            f"Total Ridership: {new_metrics['busiest_borough'][1]:,}",
+        )
     return no_update

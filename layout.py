@@ -1,12 +1,5 @@
 from dash import html, dcc, dash_table
 import dash_bootstrap_components as dbc
-from data import get_data
-from visualizer import (
-    plot_hourly_ridership,
-    plot_station_map_view,
-    plot_weekly_ridership,
-    plot_time_block_ridership,
-)
 from helper import (
     add_dash_table,
     add_card,
@@ -14,34 +7,18 @@ from helper import (
     date_picker_end,
     load_button,
 )
+from app_instance import data, plots
 
-# Load data
-(
-    hourly_ridership_df,
-    stations_df,
-    weekly_ridership_df,
-    station_weekly_ridership_df,
-    time_block_ridership_df,
-    stations_time_block_ridership_df,
-    metrics,
-    stations_stats_df,
-    borough_stats_df,
-    line_stats_df,
-) = get_data()
-
-# Generate plots
-hourly_ridership_plot = plot_hourly_ridership(hourly_ridership_df)
-weekly_ridership_plot = plot_weekly_ridership(weekly_ridership_df, "borough")
-station_weekly_ridership_plot = plot_weekly_ridership(
-    station_weekly_ridership_df, "station_complex"
-)
-time_block_ridership_plot = plot_time_block_ridership(
-    time_block_ridership_df, "borough"
-)
-station_time_block_ridership_plot = plot_time_block_ridership(
-    stations_time_block_ridership_df, "station_complex"
-)
-station_map_view = plot_station_map_view(stations_df)
+hourly_ridership_plot = plots["hourly_ridership_plot"]
+weekly_ridership_plot = plots["weekly_ridership_plot"]
+station_weekly_ridership_plot = plots["station_weekly_ridership_plot"]
+time_block_ridership_plot = plots["time_block_ridership_plot"]
+station_time_block_ridership_plot = plots["station_time_block_ridership_plot"]
+station_map_view = plots["station_map_view"]
+metrics = data["metrics"]
+stations_stats_df = data["station_stats_df"]
+borough_stats_df = data["borough_stats_df"]
+line_stats_df = data["line_stats_df"]
 
 
 def get_layout():
@@ -150,6 +127,7 @@ def get_layout():
                             card_body=metrics["no_of_boroughs"],
                             card_color=card_color,
                             card_style=card_style,
+                            id="total-boroughs-card",
                         ),
                         width=3,
                     ),
@@ -159,6 +137,7 @@ def get_layout():
                             card_body=metrics["no_of_lines"],
                             card_color=card_color,
                             card_style=card_style,
+                            id="total-lines-card",
                         ),
                         width=3,
                     ),
@@ -168,15 +147,17 @@ def get_layout():
                             card_body=metrics["no_of_stations"],
                             card_color=card_color,
                             card_style=card_style,
+                            id="total-stations-card",
                         ),
                         width=3,
                     ),
                     dbc.Col(
                         add_card(
                             card_header="Total Number of Rides",
-                            card_body=metrics["total_num_of_rides"],
+                            card_body=metrics["no_of_rides"],
                             card_color=card_color,
                             card_style=card_style,
+                            id="total-rides-card",
                         ),
                         width=3,
                     ),
@@ -193,6 +174,7 @@ def get_layout():
                             card_color=card_color,
                             card_style=card_style,
                             card_para=f"Total Ridership: {metrics['busiest_station'][1]:,}",
+                            id="busiest-station-card",
                         ),
                         md=4,
                     ),
@@ -203,6 +185,7 @@ def get_layout():
                             card_color=card_color,
                             card_style=card_style,
                             card_para=f"Total Ridership: {metrics['busiest_line'][1]:,}",
+                            id="busiest-line-card",
                         ),
                         md=4,
                     ),
@@ -213,6 +196,7 @@ def get_layout():
                             card_color=card_color,
                             card_style=card_style,
                             card_para=f"Total Ridership: {metrics['busiest_borough'][1]:,}",
+                            id="busiest-borough-card",
                         ),
                         md=4,
                     ),
@@ -287,19 +271,40 @@ def get_layout():
                     dcc.Tab(
                         label="📊 Statistical Dashboard",
                         value="tab-1",
-                        children=statistical_dashboard_tab,
+                        children=[
+                            dbc.Spinner(
+                                statistical_dashboard_tab,
+                                color="primary",
+                                type="border",
+                                spinner_style={"position": "relative", "zIndex": 10},
+                            ),
+                        ],
                         style={"fontFamily": "Lato"},
                     ),
                     dcc.Tab(
                         label="📈 Ridership Trends",
                         value="tab-2",
-                        children=ridership_trends_tab,
+                        children=[
+                            dbc.Spinner(
+                                ridership_trends_tab,
+                                color="primary",
+                                type="border",
+                                spinner_style={"position": "relative", "zIndex": 10},
+                            ),
+                        ],
                         style={"fontFamily": "Lato"},
                     ),
                     dcc.Tab(
                         label="🗺️ Station Map View",
                         value="tab-3",
-                        children=station_map_view_tab,
+                        children=[
+                            dbc.Spinner(
+                                station_map_view_tab,
+                                color="primary",
+                                type="border",
+                                spinner_style={"position": "relative", "zIndex": 10},
+                            ),
+                        ],
                         style={"fontFamily": "Lato"},
                     ),
                 ],

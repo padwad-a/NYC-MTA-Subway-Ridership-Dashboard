@@ -10,26 +10,50 @@ from helper import (
     format_station_name,
     get_busiest,
 )
+import os
 
 logger = logging.getLogger("MTA_Subway_Ridership_Dashboard")
 DATA_DIR = "data/"
+
+
+def fetch_data_from_api(url):
+    """Fetch data from the given API URL."""
+    response = requests.get(url)
+    if response.status_code == 200:
+        logger.info(f"Successfully fetched data from {url}")
+        return pd.DataFrame(response.json())
+    else:
+        logger.error(f"Failed to fetch data from {url}")
+        return pd.DataFrame()
+
+
+def read_data_from_file(file_path):
+    """Read data from the given file path."""
+    # files = os.listdir(file_path)
+    files = ["data_12_2024.csv", "data_7_2020.csv"]
+    data = pd.DataFrame()
+
+    try:
+        for file in files:
+            if file.endswith(".csv"):
+                df = pd.read_csv(file_path + file)
+                data = pd.concat([data, df], ignore_index=True)
+        logger.info(f"Succesfully read files.")
+        return data
+    except FileNotFoundError:
+        logger.error(f"File not found: {file_path}")
+        return pd.DataFrame()
 
 
 def load_data():
     """Load ridership data from file or API."""
     try:
         logger.info("Reading Data file.")
-        ridership_df = pd.read_csv(f"{DATA_DIR}data.csv")
-
+        ridership_df = read_data_from_file(DATA_DIR)
     except FileNotFoundError:
         logger.info("Data file not found, fetching from API.")
         ridership_url = "https://data.ny.gov/resource/wujg-7c2s.json?$limit=50000"
-        response = requests.get(ridership_url)
-        if response.status_code == 200:
-            return pd.DataFrame(response.json())
-        else:
-            logger.error(f"Failed to fetch data from {ridership_url}")
-        return pd.DataFrame()
+        ridership_df = fetch_data_from_api(ridership_url)
 
     return ridership_df
 
@@ -427,7 +451,7 @@ def get_key_metrics(df):
         "no_of_stations": no_of_stations,
         "no_of_lines": no_of_lines,
         "no_of_boroughs": no_of_boroughs,
-        "total_num_of_rides": int(total_num_of_rides),
+        "no_of_rides": total_num_of_rides,
     }
 
     return metrics
@@ -437,29 +461,37 @@ def get_data():
     """Load and clean data."""
     ridership_data = load_data()
     ridership_df = clean_data(ridership_data)
-    filtered_df = filter_data(ridership_df)
-    hourly_ridership_df = get_hourly_ridership(filtered_df)
-    weekly_ridership_df, station_weekly_ridership_df = get_weekly_ridership(
-        ridership_df
-    )
-    time_block_ridership_df, stations_time_block_ridership_df = (
-        get_time_block_ridership(ridership_df)
-    )
-    stations_df = get_stations(ridership_df)
-    metrics = get_key_metrics(ridership_df)
-    station_stats_df = get_stations_stats_df(ridership_df)
-    borough_stats_df = get_borough_stats_df(ridership_df)
-    line_stats_df = get_line_stats_df(ridership_df)
+    default_dates = get_default_dates(ridership_df)
 
-    return (
-        hourly_ridership_df,
-        stations_df,
-        weekly_ridership_df,
-        station_weekly_ridership_df,
-        time_block_ridership_df,
-        stations_time_block_ridership_df,
-        metrics,
-        station_stats_df,
-        borough_stats_df,
-        line_stats_df,
+    return ridership_df, default_dates
+
+
+def get_processed_data(
+    ridership_df: pd.DataFrame = None, start_date=None, end_date=None
+) -> tuple:
+    """Load and process data."""
+    data = {}
+    data["dates"] = (start_date, end_date)
+    if ridership_df is None:
+        ridership_df, default_dates = get_data()
+        start_date, end_date = default_dates
+        data["ridership_df"] = ridership_df
+        data["dates"] = default_dates
+
+    filtered_df = filter_data(ridership_df, start_date, end_date)
+    data["filtered_df"] = filtered_df
+
+    data["hourly_ridership_df"] = get_hourly_ridership(filtered_df)
+    data["weekly_ridership_df"], data["station_weekly_ridership_df"] = (
+        get_weekly_ridership(filtered_df)
     )
+    data["time_block_ridership_df"], data["stations_time_block_ridership_df"] = (
+        get_time_block_ridership(filtered_df)
+    )
+    data["stations_df"] = get_stations(filtered_df)
+    data["metrics"] = get_key_metrics(filtered_df)
+    data["station_stats_df"] = get_stations_stats_df(filtered_df)
+    data["borough_stats_df"] = get_borough_stats_df(filtered_df)
+    data["line_stats_df"] = get_line_stats_df(filtered_df)
+
+    return data
