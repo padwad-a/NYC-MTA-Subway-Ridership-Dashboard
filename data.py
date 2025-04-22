@@ -29,8 +29,7 @@ def fetch_data_from_api(url):
 
 def read_data_from_file(file_path):
     """Read data from the given file path."""
-    # files = os.listdir(file_path)
-    files = ["data_12_2024.csv", "data_7_2020.csv"]
+    files = ["data_12_2024.csv"]
     data = pd.DataFrame()
 
     try:

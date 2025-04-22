@@ -2,6 +2,8 @@
 
 An interactive data visualization dashboard built using **Dash**, **Plotly**, and **Pandas** to explore ridership patterns in the NYC MTA subway system. This project leverages open data from the New York State government to provide insights into hourly ridership trends, station-level traffic, and geographical patterns.
 
+To start this tool, run `app.py`.
+
 ---
 
 ## 📁 About the Project
